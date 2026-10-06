@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canteen Management - Admin Portal</title>
+
+    <!-- Same Supabase library used by the working customer website -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        header {
+            background: #222;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 30px;
+        }
+
+        header p {
+            margin-top: 8px;
+        }
+
+        .container {
+            width: 94%;
+            max-width: 1200px;
+            margin: 25px auto;
+        }
+
+        .status {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #b36b00;
+            font-weight: bold;
+        }
+
+        .small-error {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #b00020;
+            white-space: pre-wrap;
+        }
+
+        button {
+            border: none;
+            padding: 10px 14px;
+            border-radius: 7px;
+            background: #222;
+            color: white;
+            cursor: pointer;
+            margin: 3px;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        .refresh {
+            background: #0069d9;
+            margin-bottom: 25px;
+        }
+
+        .refresh:hover {
+            background: #0053ad;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        }
+
+        .card p {
+            font-size: 16px;
+        }
+
+        .card h2 {
+            font-size: 30px;
+            margin-top: 10px;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .section h2 {
+            margin-bottom: 20px;
+        }
+
+        .form-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            font-size: 15px;
+        }
+
+        .save-button {
+            background: #16803c;
+            margin-top: 15px;
+        }
+
+        .save-button:hover {
+            background: #0d632c;
+        }
+
+        .clear-button {
+            background: #777;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #222;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .edit {
+            background: #f0ad00;
+        }
+
+        .edit:hover {
+            background: #d99800;
+        }
+
+        .delete {
+            background: #dc3545;
+        }
+
+        .delete:hover {
+            background: #b52a37;
+        }
+
+        .available {
+            background: #16803c;
+        }
+
+        .unavailable {
+            background: #777;
+        }
+
+        .status-select {
+            width: auto;
+            min-width: 120px;
+            padding: 7px;
+        }
+
+        .empty {
+            color: #777;
+            padding: 15px 0;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 24px;
+            }
+
+            .container {
+                width: 96%;
+            }
+
+            .section {
+                padding: 15px;
+            }
+
+            .card h2 {
+                font-size: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>🍴 Canteen Management System</h1>
+    <p>Admin Dashboard</p>
+</header>
+
+<div class="container">
+
+    <!-- DATABASE STATUS -->
+    <div class="status">
+        <p>Database Status</p>
+        <p id="status">Connecting...</p>
+        <p id="dbError" class="small-error"></p>
+    </div>
+
+    <button class="refresh" onclick="loadDashboard()">
+        🔄 Refresh Dashboard
+    </button>
+
+    <!-- STATISTICS -->
+    <div class="cards">
+
+        <div class="card">
+            <p>👥 Total Customers</p>
+            <h2 id="customerCount">0</h2>
+        </div>
+
+        <div class="card">
+            <p>🧾 Total Orders</p>
+            <h2 id="orderCount">0</h2>
+        </div>
+
+        <div class="card">
+            <p>🍔 Menu Items</p>
+            <h2 id="menuCount">0</h2>
+        </div>
+
+        <div class="card">
+            <p>💰 Total Sales</p>
+            <h2>₹<span id="sales">0.00</span></h2>
+        </div>
+
+    </div>
+
+    <!-- MENU MANAGEMENT -->
+    <div class="section">
+
+        <h2>🍔 Menu Management</h2>
+
+        <div class="form-box">
+
+            <h3 id="formTitle">➕ Add New Menu Item</h3>
+
+            <form onsubmit="saveMenuItem(event)">
+
+                <input type="hidden" id="editItemId">
+
+                <label>Food Name</label>
+                <input
+                    type="text"
+                    id="itemName"
+                    placeholder="Example: Cheese Burger"
+                    required
+                >
+
+                <label>Category</label>
+                <select id="itemCategory" required>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Meals">Meals</option>
+                </select>
+
+                <label>Price</label>
+                <input
+                    type="number"
+                    id="itemPrice"
+                    placeholder="Enter price"
+                    min="0"
+                    step="0.01"
+                    required
+                >
+
+                <button type="submit" class="save-button">
+                    💾 Save Menu Item
+                </button>
+
+                <button type="button" class="clear-button" onclick="clearForm()">
+                    Clear
+                </button>
+
+            </form>
+
+            <p id="menuMessage" class="small-error"></p>
+
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Food</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Availability</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody id="menuTable">
+                <tr>
+                    <td colspan="6">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <!-- ORDERS -->
+    <div class="section">
+
+        <h2>🧾 Orders</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer ID</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="ordersTable">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <!-- CUSTOMERS -->
+    <div class="section">
+
+        <h2>👥 Customers</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Customer ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+
+            <tbody id="customersTable">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+/* =========================================================
+   SUPABASE CONNECTION
+   IMPORTANT:
+   These are copied from your working customer website.
+   ========================================================= */
+
+const SUPABASE_URL =
+    "https://syeypwzfhilsqzuqcsuk.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_2IioGlm3Ji9O1g52HWKvew_K7odBHcU";
+
+const { createClient } = supabase;
+
+const db = createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+
+/* =========================================================
+   HELPER FUNCTIONS
+   ========================================================= */
+
+function showDatabaseError(message) {
+    console.error("Supabase error:", message);
+
+    document.getElementById("status").innerHTML =
+        '<span class="error">Database Error ❌</span>';
+
+    document.getElementById("dbError").textContent =
+        message || "Unknown database error";
+}
+
+function clearDatabaseError() {
+    document.getElementById("dbError").textContent = "";
+}
+
+
+/* =========================================================
+   LOAD DASHBOARD
+   ========================================================= */
+
+async function loadDashboard() {
+
+    const status = document.getElementById("status");
+
+    status.innerHTML = "Connecting...";
+    clearDatabaseError();
+
+    try {
+
+        /* -----------------------------
+           CUSTOMERS
+           ----------------------------- */
+
+        const customersResult = await db
+            .from("customers")
+            .select("*");
+
+        if (customersResult.error) {
+            throw new Error(
+                "Customers table: " +
+                customersResult.error.message
+            );
+        }
+
+        const customers = customersResult.data || [];
+
+
+        /* -----------------------------
+           ORDERS
+           ----------------------------- */
+
+        const ordersResult = await db
+            .from("orders")
+            .select("*")
+            .order("order_id", { ascending: false });
+
+        if (ordersResult.error) {
+            throw new Error(
+                "Orders table: " +
+                ordersResult.error.message
+            );
+        }
+
+        const orders = ordersResult.data || [];
+
+
+        /* -----------------------------
+           MENU
+           ----------------------------- */
+
+        const menuResult = await db
+            .from("menu_items")
+            .select("*")
+            .order("item_id");
+
+        if (menuResult.error) {
+            throw new Error(
+                "Menu table: " +
+                menuResult.error.message
+            );
+        }
+
+        const menu = menuResult.data || [];
+
+
+        /* -----------------------------
+           DISPLAY COUNTS
+           ----------------------------- */
+
+        document.getElementById("customerCount").textContent =
+            customers.length;
+
+        document.getElementById("orderCount").textContent =
+            orders.length;
+
+        document.getElementById("menuCount").textContent =
+            menu.length;
+
+
+        /* -----------------------------
+           TOTAL SALES
+           ----------------------------- */
+
+        let totalSales = 0;
+
+        orders.forEach(order => {
+            totalSales += Number(order.total_amount || 0);
+        });
+
+        document.getElementById("sales").textContent =
+            totalSales.toFixed(2);
+
+
+        /* -----------------------------
+           DISPLAY MENU
+           ----------------------------- */
+
+        displayMenu(menu);
+
+
+        /* -----------------------------
+           DISPLAY ORDERS
+           ----------------------------- */
+
+        displayOrders(orders);
+
+
+        /* -----------------------------
+           DISPLAY CUSTOMERS
+           ----------------------------- */
+
+        displayCustomers(customers);
+
+
+        status.innerHTML =
+            '<span class="success">Connected to Supabase ✅</span>';
+
+    }
+    catch (error) {
+
+        showDatabaseError(error.message);
+
+    }
+}
+
+
+/* =========================================================
+   DISPLAY MENU
+   ========================================================= */
+
+function displayMenu(menu) {
+
+    const table = document.getElementById("menuTable");
+
+    table.innerHTML = "";
+
+    if (!menu.length) {
+        table.innerHTML =
+            '<tr><td colspan="6" class="empty">No menu items found.</td></tr>';
+        return;
+    }
+
+    menu.forEach(item => {
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${item.item_id}</td>
+
+            <td>${escapeHtml(item.item_name)}</td>
+
+            <td>${escapeHtml(item.category)}</td>
+
+            <td>₹${Number(item.price || 0).toFixed(2)}</td>
+
+            <td>
+                <button
+                    class="${item.availability ? "available" : "unavailable"}"
+                    onclick="toggleAvailability(${item.item_id}, ${item.availability})">
+                    ${item.availability ? "✅ Available" : "❌ Unavailable"}
+                </button>
+            </td>
+
+            <td>
+                <button
+                    class="edit"
+                    onclick="editMenuItem(${item.item_id})">
+                    ✏️ Edit
+                </button>
+
+                <button
+                    class="delete"
+                    onclick="deleteMenuItem(${item.item_id})">
+                    🗑️ Delete
+                </button>
+            </td>
+        `;
+
+        table.appendChild(row);
+    });
+}
+
+
+/* =========================================================
+   DISPLAY ORDERS
+   ========================================================= */
+
+function displayOrders(orders) {
+
+    const table = document.getElementById("ordersTable");
+
+    table.innerHTML = "";
+
+    if (!orders.length) {
+        table.innerHTML =
+            '<tr><td colspan="5" class="empty">No orders found.</td></tr>';
+        return;
+    }
+
+    orders.forEach(order => {
+
+        const row = document.createElement("tr");
+
+        const date = order.order_date
+            ? new Date(order.order_date).toLocaleString()
+            : "-";
+
+        row.innerHTML = `
+            <td>#${order.order_id}</td>
+
+            <td>${order.customer_id ?? "-"}</td>
+
+            <td>${date}</td>
+
+            <td>₹${Number(order.total_amount || 0).toFixed(2)}</td>
+
+            <td>
+                <select
+                    class="status-select"
+                    onchange="updateOrderStatus(${order.order_id}, this.value)">
+
+                    <option value="Pending"
+                        ${order.order_status === "Pending" ? "selected" : ""}>
+                        Pending
+                    </option>
+
+                    <option value="Preparing"
+                        ${order.order_status === "Preparing" ? "selected" : ""}>
+                        Preparing
+                    </option>
+
+                    <option value="Ready"
+                        ${order.order_status === "Ready" ? "selected" : ""}>
+                        Ready
+                    </option>
+
+                    <option value="Completed"
+                        ${order.order_status === "Completed" ? "selected" : ""}>
+                        Completed
+                    </option>
+
+                    <option value="Cancelled"
+                        ${order.order_status === "Cancelled" ? "selected" : ""}>
+                        Cancelled
+                    </option>
+
+                </select>
+            </td>
+        `;
+
+        table.appendChild(row);
+    });
+}
+
+
+/* =========================================================
+   DISPLAY CUSTOMERS
+   ========================================================= */
+
+function displayCustomers(customers) {
+
+    const table = document.getElementById("customersTable");
+
+    table.innerHTML = "";
+
+    if (!customers.length) {
+        table.innerHTML =
+            '<tr><td colspan="5" class="empty">No customers found.</td></tr>';
+        return;
+    }
+
+    customers.forEach(customer => {
+
+        const row = document.createElement("tr");
+
+        const created = customer.created_at
+            ? new Date(customer.created_at).toLocaleString()
+            : "-";
+
+        row.innerHTML = `
+            <td>${customer.customer_id ?? "-"}</td>
+
+            <td>${escapeHtml(customer.customer_name)}</td>
+
+            <td>${escapeHtml(customer.phone)}</td>
+
+            <td>${escapeHtml(customer.email || "-")}</td>
+
+            <td>${created}</td>
+        `;
+
+        table.appendChild(row);
+    });
+}
+
+
+/* =========================================================
+   ADD / EDIT MENU ITEM
+   ========================================================= */
+
+async function saveMenuItem(event) {
+
+    event.preventDefault();
+
+    const id =
+        document.getElementById("editItemId").value;
+
+    const name =
+        document.getElementById("itemName").value.trim();
+
+    const category =
+        document.getElementById("itemCategory").value;
+
+    const price =
+        Number(document.getElementById("itemPrice").value);
+
+    const message =
+        document.getElementById("menuMessage");
+
+    if (!name || !Number.isFinite(price) || price < 0) {
+        message.className = "small-error";
+        message.textContent = "Please enter valid menu details.";
+        return;
+    }
+
+    message.className = "";
+    message.textContent = "Saving...";
+
+    try {
+
+        if (id) {
+
+            const result = await db
+                .from("menu_items")
+                .update({
+                    item_name: name,
+                    category: category,
+                    price: price
+                })
+                .eq("item_id", Number(id));
+
+            if (result.error) {
+                throw result.error;
+            }
+
+            message.className = "success";
+            message.textContent = "Menu item updated successfully ✅";
+
+        } else {
+
+            const result = await db
+                .from("menu_items")
+                .insert({
+                    item_name: name,
+                    category: category,
+                    price: price,
+                    availability: true
+                });
+
+            if (result.error) {
+                throw result.error;
+            }
+
+            message.className = "success";
+            message.textContent = "Menu item added successfully ✅";
+        }
+
+        clearForm(false);
+        await loadDashboard();
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+        message.className = "small-error";
+        message.textContent =
+            "Save failed: " + error.message;
+    }
+}
+
+
+/* =========================================================
+   EDIT MENU ITEM
+   ========================================================= */
+
+async function editMenuItem(itemId) {
+
+    try {
+
+        const result = await db
+            .from("menu_items")
+            .select("*")
+            .eq("item_id", itemId)
+            .single();
+
+        if (result.error) {
+            throw result.error;
+        }
+
+        const item = result.data;
+
+        document.getElementById("editItemId").value =
+            item.item_id;
+
+        document.getElementById("itemName").value =
+            item.item_name || "";
+
+        document.getElementById("itemCategory").value =
+            item.category || "Snacks";
+
+        document.getElementById("itemPrice").value =
+            item.price ?? "";
+
+        document.getElementById("formTitle").textContent =
+            "✏️ Edit Menu Item";
+
+        window.scrollTo({
+            top: document.querySelector(".form-box").offsetTop - 20,
+            behavior: "smooth"
+        });
+
+    }
+    catch (error) {
+
+        alert("Could not load menu item: " + error.message);
+    }
+}
+
+
+/* =========================================================
+   CLEAR FORM
+   ========================================================= */
+
+function clearForm(clearMessage = true) {
+
+    document.getElementById("editItemId").value = "";
+
+    document.getElementById("itemName").value = "";
+
+    document.getElementById("itemCategory").value = "Snacks";
+
+    document.getElementById("itemPrice").value = "";
+
+    document.getElementById("formTitle").textContent =
+        "➕ Add New Menu Item";
+
+    if (clearMessage) {
+        document.getElementById("menuMessage").textContent = "";
+    }
+}
+
+
+/* =========================================================
+   DELETE MENU ITEM
+   ========================================================= */
+
+async function deleteMenuItem(itemId) {
+
+    if (!confirm("Are you sure you want to delete this menu item?")) {
+        return;
+    }
+
+    try {
+
+        const result = await db
+            .from("menu_items")
+            .delete()
+            .eq("item_id", itemId);
+
+        if (result.error) {
+            throw result.error;
+        }
+
+        alert("Menu item deleted successfully.");
+
+        await loadDashboard();
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Delete failed: " +
+            error.message +
+            "\n\nIf this item is already used in an order, the database may prevent deletion."
+        );
+    }
+}
+
+
+/* =========================================================
+   TOGGLE MENU AVAILABILITY
+   ========================================================= */
+
+async function toggleAvailability(itemId, currentValue) {
+
+    try {
+
+        const result = await db
+            .from("menu_items")
+            .update({
+                availability: !currentValue
+            })
+            .eq("item_id", itemId);
+
+        if (result.error) {
+            throw result.error;
+        }
+
+        await loadDashboard();
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Could not change availability: " +
+            error.message
+        );
+    }
+}
+
+
+/* =========================================================
+   UPDATE ORDER STATUS
+   ========================================================= */
+
+async function updateOrderStatus(orderId, newStatus) {
+
+    try {
+
+        const result = await db
+            .from("orders")
+            .update({
+                order_status: newStatus
+            })
+            .eq("order_id", orderId);
+
+        if (result.error) {
+            throw result.error;
+        }
+
+        await loadDashboard();
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Could not update order status: " +
+            error.message
+        );
+
+        await loadDashboard();
+    }
+}
+
+
+/* =========================================================
+   SIMPLE HTML ESCAPE
+   ========================================================= */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =========================================================
+   START ADMIN PORTAL
+   ========================================================= */
+
+loadDashboard();
+
+</script>
+
+</body>
+</html>
